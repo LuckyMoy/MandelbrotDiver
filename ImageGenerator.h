@@ -40,4 +40,4 @@ typedef struct comp_{
     double re,im;
 }comp;
 
-int genImage(comp centre, double zoom, int nMax);
+int genImage(comp centre, double zoom, int nMax, int);

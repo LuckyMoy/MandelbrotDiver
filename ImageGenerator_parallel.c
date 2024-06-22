@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <pthread.h>
 #include "ImageGenerator.h"
 
 int calcSuite(comp c, int nMax) {
@@ -71,28 +72,68 @@ void paddingBMP(FILE* BMPfile) {
     }
 }
 
+typedef struct Thread_data_{
+    int start, end, id, nmax;
+    int* done;
+    int** matrix;
+    comp centre;
+    double zoom;
+} Thread_data;
+
+void* thread_function(void* arg) {
+    Thread_data *data = (Thread_data*) arg;
+    for(int i = data->start; i < data->end; i++) {
+        for(int r = -TAILLE_R/2; r < TAILLE_R/2; r++) {
+            // printf("thrd %i : %i %i\r", data->id, r, i);
+            comp c;
+            c.re = data->centre.re + (r * RES_R / data->zoom);
+            c.im = data->centre.im + (i * RES_I / data->zoom); 
+            (data->matrix)[i + TAILLE_I/2][r + TAILLE_R/2] = calcSuite(c, data->nmax);
+        }
+    }
+    // printf("thead %i ok \n", data->id);
+    (*data->done)++;
+    return NULL;
+}
+
 int genImage(comp centre, double zoom, int nMax, int nprocs) {
 
-    // printf("%lf + %lfi ; x%i ; N max = %i", centre.re, centre.im, (int)zoom, nMax);
-
-
     FILE* BMPfile = initBMP("image.bmp");
+    int **matrix = (int **) malloc(sizeof(int*) *TAILLE_I);
+    for(int i = 0 ; i< TAILLE_I ; i++) matrix[i] = (int *) malloc(sizeof(int)*TAILLE_R);
 
-    comp c;
-    for(int i = -TAILLE_I/2; i < TAILLE_I/2; i++) {
-        // if(TAILLE_I >= 1000 && ((i + TAILLE_I/2) % (TAILLE_I / 1000)) == 0) {
-        //     // printf("\rGenerating ... %.1f%%", (float)(i+TAILLE_I/2) / (float)TAILLE_I * 100.);
-        //     fflush(stdout);
-        // }
+    int doneCtr = 0;
 
-        c.im = centre.im + (i * RES_I / zoom); 
-        for(int r = -TAILLE_R/2; r < TAILLE_R/2; r++) {
-            c.re = centre.re + (r * RES_R / zoom);
-            recordImageBMP(calcSuite(c, nMax), BMPfile, nMax);
+    Thread_data thrds_data[nprocs];
+    pthread_t threads[nprocs];
+
+    for(int i = 0; i<nprocs ; i++) {
+        thrds_data[i].start = (TAILLE_I/nprocs)*i - TAILLE_I/2;
+        thrds_data[i].end = (TAILLE_I/nprocs)*(i+1) - TAILLE_I/2;
+        thrds_data[i].done = &doneCtr;
+        thrds_data[i].matrix = matrix;
+        thrds_data[i].id = i;
+        thrds_data[i].centre = centre;
+        thrds_data[i].nmax = nMax;
+        thrds_data[i].zoom = zoom;
+        
+        if (pthread_create(&threads[i], NULL, thread_function, (void *) &thrds_data[i])) {
+            fprintf(stderr, "Error creating thread %i\n", i);
+            return EXIT_FAILURE;
         }
+    }
+
+    while(doneCtr < nprocs);
+
+    for(int i = -TAILLE_I/2; i < TAILLE_I/2; i++) {
+
+        for(int r = -TAILLE_R/2; r < TAILLE_R/2; r++) {
+            recordImageBMP(matrix[i + TAILLE_I/2][r + TAILLE_R/2], BMPfile, nMax);
+        }
+        free(matrix[i + TAILLE_I/2]);
         paddingBMP(BMPfile);
     }
-    // printf("\rGenerating ... 100.0%%\n");
+    free(matrix);
     fclose(BMPfile);
     // printf("Done.\n");
 

@@ -13,9 +13,7 @@
 #define FIRST_CENTRE_R -0.65
 #define FIRST_CENTRE_I 0
 
-// gcc -Wall -Werror MandelbrotDiver.c $(pkg-config --cflags --libs sdl2 SDL2_image SDL2_gfx) ImageGenerator.c -o MandelbrotDiver
-// gcc -Wall -Werror MandelbrotDiver.c $(pkg-config --cflags --libs sdl2 SDL2_image SDL2_gfx) ImageGenerator_parallel.c -o MandelbrotDiver_parallel 
-// gcc -Wall -Werror MandelbrotDiver.c $(pkg-config --cflags --libs sdl2 SDL2_image SDL2_gfx) ImageGenerator_parallel2.c -o MandelbrotDiver_parallel2
+// gcc -Wall -Werror MandelbrotDiver_parallel.c $(pkg-config --cflags --libs sdl2 SDL2_image SDL2_gfx) ImageGenerator_parallel.c -o MandelbrotDiver_parallel 
 
 comp calcNewCentreZoom(int cursorX, int cursorY, comp currentCenter, double currentZoom, double newZoom) {
     // Conversion des coordonnées du curseur en coordonnées complexes
@@ -51,6 +49,7 @@ int main(int argc, char *argv[]) {
         printf("sysconf error\n");
         return EXIT_FAILURE;
     }
+    printf("Number of available logical CPU cores: %i\n", nprocs);
 
 
     // Initialisation de SDL
@@ -168,7 +167,7 @@ int main(int argc, char *argv[]) {
             clock_t start = clock();
             genImage(centre, zoom, nMax, nprocs);
             clock_t end = clock();
-            double time_spent = (double)(end - start) * 1000.0 / CLOCKS_PER_SEC;
+            double time_spent = (double)(end - start) * 1000.0 / CLOCKS_PER_SEC / nprocs;
             printf(" gen time : %.3lf ms FPS:%i\n", time_spent, (int)(1/(time_spent/1000.)));
 
             backgroundSurface = SDL_LoadBMP("image.bmp");

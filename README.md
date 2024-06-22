@@ -6,6 +6,8 @@ Mandelbrot Set Image Generator
 
 This project is a personal initiative to explore graphical programming using SDL (Simple DirectMedia Layer). It involves generating and visualizing the Mandelbrot set, a famous fractal, through a custom image generation algorithm. The project includes two main components: the image generator and the Mandelbrot set diver.
 
+It also includes an optimized version parallelizing the calculations by using threads (library "pthread.h" with clang).
+
 ## Installation Instructions
 
 1. **Clone the Repository**
